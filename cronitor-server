@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+#
+# Author:: Joshua J. Berry <des@condordes.net>
+# Copyright:: Copyright (c) 2013, Joshua J. Berry
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+from datetime import datetime, timedelta
+
+import os
+import re
+import json
+import fnmatch
+import optparse
+
+import tornado.ioloop
+import tornado.httpserver
+import tornado.web
+import tornado.template
+
+from cronitor.model import JobSet
+from cronitor.config import CronitorConfig
+
+
+
+def main():
+    optp = optparse.OptionParser()
+    optp.add_option("-c", "--config", dest="config", metavar="FILE",
+                    help="The configuration file to use.")
+    opts, args = optp.parse_args()
+    assert not args
+
+    config = CronitorConfig(opts.config)
+    jobset = JobSet(config)
+    application = make_app(config.template_dir, config.asset_dir, jobset)
+
+    server = tornado.httpserver.HTTPServer(application)
+    for addr, port in config.listen_on:
+        server.bind(port, address=addr)
+    server.start()
+
+    tornado.ioloop.IOLoop.instance().start()
+
+
+
+def make_app(template_dir, asset_dir, jobset):
+    loader = tornado.template.Loader(template_dir)
+    return tornado.web.Application(
+        handlers=[
+            (r"/", MainHandler(jobset)),
+            (r"/submit/([a-zA-Z0-9_-]*)", LogSubmitHandler(jobset)),
+            (r"/log/([a-zA-Z0-9._-]*)/?", LogListHandler(jobset)),
+            (r"/log/([a-zA-Z0-9_-]*)/([^/]*)", LogRetrieveHandler(jobset)),
+        ],
+        template_path=template_dir,
+        static_path=asset_dir)
+
+
+
+def MainHandler(jobset):
+    class h(tornado.web.RequestHandler):
+        def get(self):
+            for job in jobset.jobs:
+                job.rotate()
+            self.render("index.html", jobs=jobset)
+    return h
+
+def LogSubmitHandler(jobset):
+    class h(tornado.web.RequestHandler):
+        def post(self, job_name):
+            job = jobset[job_name]
+            job.record_log_entry(datetime.now(), self.request.body)
+    return h
+
+def LogListHandler(jobset):
+    class h(tornado.web.RequestHandler):
+        @tornado.web.addslash
+        def get(self, job_name):
+            job = jobset[job_name]
+            self.render("log-list.html", job=job)
+    return h
+
+def LogRetrieveHandler(jobset):
+    class h(tornado.web.RequestHandler):
+        def get(self, job_name, ts):
+            job = jobset[job_name]
+            entry = job[ts]
+
+            self.render("log.html", entry=entry)
+    return h
+
+
+
+if __name__ == "__main__":
+    main()

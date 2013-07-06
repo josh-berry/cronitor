@@ -1,0 +1,52 @@
+TABLE {
+    margin: 20px 6px;
+    background-color: #e0e0e0;
+    border: solid 1px #c0c0c0;
+    font-family: sans-serif;
+}
+TH {
+    background-color: #d0d0d0;
+    padding: 4px;
+}
+TD {
+    padding: 4px;
+}
+
+.config TH {
+    text-align: left;
+}
+
+.job_ok {
+    //background-color: #c0ffc0;
+}
+.job_overdue {
+    background-color: #ffff00;
+}
+.job_failed, .job_error {
+    background-color: #ff8080;
+}
+
+.job_overdue_warning {
+    background-color: #ffff00;
+    font-weight: bold;
+    text-align: center;
+}
+
+.log_metadata TH, .log_metadata TD {
+    padding: 2px;
+}
+
+.log_metadata TH {
+    text-align: left;
+}
+
+.log_text, .log_metadata TD {
+    white-space: pre;
+    font-family: monospace;
+}
+
+.log_error {
+    font-weight: bold;
+    color: white;
+    background-color: red;
+}

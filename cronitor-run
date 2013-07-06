@@ -1,0 +1,114 @@
+#!/usr/bin/env python
+#
+# Author:: Joshua J. Berry <des@condordes.net>
+# Copyright:: Copyright 2013, Joshua J. Berry
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+import optparse
+import subprocess
+import pty
+import os
+import sys
+import socket
+import traceback
+
+import urllib2
+
+try:
+    url_base = os.environ['CRONITOR_URL']
+except KeyError:
+    url_base = None
+
+usage = "Usage: cronitor-run [options] -j job-name -- command ..."
+descr = """Runs a command, capturing its output, environment and return code,
+and reports the outcome to a Cronitor server, specified using the -p option or
+the CRONITOR_URL environment variable. """
+
+optp = optparse.OptionParser(usage=usage, description=descr)
+optp.add_option("-j", "--job", dest="job", metavar="NAME", default=None,
+                help="The name of the job we are running")
+optp.add_option("-p", "--post-to", dest="post_url", metavar="URL",
+                default=url_base,
+                help="HTTP URL of the cronitor-server")
+optp.add_option('-q', '--quiet', dest='quiet', action='store_true',
+                default=False, help="Don't echo the command's output to stdout")
+opts, args = optp.parse_args()
+
+if not opts.post_url:
+    sys.stderr.write("No post URL specified; set CRONITOR_URL or use -p\n")
+    sys.exit(1)
+if not opts.job:
+    sys.stderr.write("No job name specified; set with -j\n")
+    sys.exit(1)
+
+# Capture and report on the environment
+meta = {
+    'Directory': os.getcwd(),
+    'Command': " ".join(args),
+    'Host': socket.gethostname(),
+}
+for k, v in os.environ.iteritems():
+    meta['ENV.%s' % k] = v
+
+lines = []
+try:
+    # Control the child process with a TTY so the child process will use line
+    # buffering for its output (and stdout/stderr won't get interleaved in weird
+    # ways)
+    read_fd, write_fd = pty.openpty()
+    read_file = os.fdopen(read_fd)
+
+    proc = subprocess.Popen(args, stdin=None, stdout=write_fd,
+                            stderr=subprocess.STDOUT, close_fds=True,
+                            shell=False)
+
+    os.fdopen(write_fd).close()
+    try:
+        for line in read_file:
+            if not opts.quiet: print line,
+            lines.append(line)
+    except IOError:
+        # We're on Linux, and the child just closed its terminal
+        pass
+
+    rc = proc.wait()
+
+except:
+    rc = -1
+    err = [
+        "\n\n\n***** CRONITOR FAILED:\n\n",
+        traceback.format_exc(),
+        "\n"
+        ]
+    lines += err
+    sys.stderr.write(''.join(err))
+
+meta['Return-Code'] = str(rc)
+
+data = "\n".join(["%s: %s" % (k, v) for k, v in meta.iteritems()])
+data += "\n\n"
+data += ''.join(lines)
+
+submit_url = opts.post_url
+if not submit_url.endswith("/"): submit_url += "/"
+submit_url += "submit/" + opts.job
+
+r = urllib2.Request(submit_url, data=data)
+res = urllib2.urlopen(r)
+if res.getcode() != 200:
+    raise res.getcode()
+
+sys.exit(rc)

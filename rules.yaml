@@ -1,0 +1,63 @@
+# Each entry in this list is a rule describes a job, or set of jobs matched by
+# shell-style wildcard.
+#
+# Rules are processed in order, so the first entry that matches a
+# particular job name is used.  However, if a parameter (such as /errors/
+# or /ignores/) takes a list of values, the lists from all rules matching a
+# job will be concatenated.
+#
+# Each rule can have several parameters:
+#
+# "match" is a shell-style wildcard pattern.  Job names are tested against
+# this pattern to see if the rule matches the job.
+#
+# "keep" is a duration -- we will keep logs from matching jobs for at least
+# this long.
+#
+# "due_every" is a duration -- we expect matching jobs to run at least this
+# frequently.  If a job has not reported in more than /due_every/
+# minutes/hours/days/etc. after it last ran, the job is considered
+# "overdue".
+#
+# Additionally, each rule has several lists of regexes, which are matched
+# against lines from a job's output.
+#
+# Lines which match "errors" and "errors_i" regexes are considered errors.  If
+# there are any such matches in a job's output, the entire job is considered
+# to have failed.
+#
+# Lines which match "ignores" and "ignores_i" regexes are exceptions to the
+# error regexes.  Even if a line matches an error regex, if it ALSO matches an
+# ignore regex it will not be considered an error.
+#
+# The *_i variants of "errors" and "ignores" are case-insensitive.
+
+
+- match: "email-archive"
+  due_every: 10sec
+
+- match: "*dr-backup*"
+  due_every: 1d 1h
+
+- match: "*unison*fast*"
+  due_every: 1h 15min
+
+- match: "*unison*"
+  due_every: 1d 1hr
+  ignores:
+    - " 0 failed"
+
+- match: "*lj-backup*"
+  due_every: 1d 1h
+
+- match: "*scrub*"
+  due_every: 1mo 1d
+  keep: 1yr
+
+- match: "*"
+  due_every: 1h
+  errors_i:
+    - "error"
+    - "failed"
+    - "timed out"
+    - "timeout"

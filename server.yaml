@@ -1,0 +1,28 @@
+# Controls the Cronitor server process.  It's read once on startup, so if you
+# want to change anything here, you have to restart the server.
+#
+# Any relative path will be interpreted relative to this config file.
+
+
+# The directory used to hold log files from jobs.  Must be writable by the
+# server.
+job_dir: logs
+
+# The directory where templates are stored.  Must ONLY be readable by the
+# server.  The templates contain executable code.
+template_dir: templates
+
+# Static files that will be served up by the server (CSS, images, etc.)
+asset_dir: assets
+
+# Rules file that describes the jobs we expect and their policies.  This is
+# re-read by the server as needed, so there's no need to restart it if you
+# change something here.
+rules_file: rules.yaml
+
+# If you want to change the interfaces/ports that cronitor-server listens on,
+# uncomment this:
+#listen_on:
+#  - "*:8434"
+#  - "localhost:8434"
+#  - ...

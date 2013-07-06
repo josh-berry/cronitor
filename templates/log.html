@@ -1,0 +1,37 @@
+<html>
+  <head>
+    <title>Log: {{ entry.job.name }} at {{ entry.timestamp }}</title>
+    <link rel="stylesheet" type="text/css" href="/static/style.css" />
+  </head>
+
+  <body>
+    <table class="log_metadata">
+      <tr>
+        <th>Command:</th>
+        <td>{{ entry.command }}</td>
+      </tr>
+      <tr>
+        <th>Timestamp:</th>
+        <td>{{ entry.timestamp }}</td>
+      </tr>
+      <tr>
+        <th>Return Code:</th>
+        <td>{{ entry.rc }}</td>
+      </tr>
+    </table>
+
+    <table class="log_metadata">
+      {% set sorted_env = entry.env.items() %}
+      <!-- {{ sorted_env.sort() }} -->
+      {% for k, v in sorted_env %}
+      <tr>
+        <th>{{ k }}</th>
+        <td>{{ v }}</td>
+      </tr>
+      {% end %}
+    </table>
+
+    <div class="log_text">{% for line, is_err in entry.scan_text() %}{% if is_err %}<span class="log_error">{{ line.rstrip() }}</span>{% else %}{{ line.rstrip() }}{% end %}
+{% end %}</div>
+  </body>
+</html>

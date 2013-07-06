@@ -1,0 +1,28 @@
+<html>
+  <head>
+    <title>Cronitor</title>
+    <link rel="stylesheet" type="text/css" href="/static/style.css" />
+  </head>
+  <body>
+    <h1>Cronitor Job Dashboard</h1>
+    <table class="job_list">
+      <tr>
+        <th>Name</th>
+        <th>Last Run</th>
+        <th>Status</th>
+        <th>Log</th>
+      </tr>
+      {% for job in jobs.jobs %}
+      {% set ent = job.latest_entry %}
+      <tr class="job_{{job.status}}">
+        <td>{{ job.name }}</td>
+        <td>{{ ent.timestamp }}</td>
+        <td>{{ job.status }}</td>
+        <td>
+          <a href="/log/{{ url_escape(job.name) }}/{{ url_escape(ent.timestamp.isoformat()) }}">newest</a>
+          <a href="/log/{{ url_escape(job.name) }}">all...</a>
+        </td>
+      {% end %}
+    </table>
+  </body>
+</html>

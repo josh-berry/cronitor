@@ -1,0 +1,41 @@
+<html>
+  <head>
+    <title>Logs for: {{ job.name }}</title>
+    <link rel="stylesheet" type="text/css" href="/static/style.css" />
+  </head>
+  <body>
+    <h1>Logs for: {{ job.name }}</h1>
+    <table class="log_list">
+      <tr>
+        <th>Timestamp</th>
+        <th>Status</th>
+        <th>Log</th>
+      </tr>
+      {% if job.is_overdue %}
+      <tr>
+        <td colspan="3" class="job_overdue_warning">
+          This job is overdue by {{ job.is_overdue }}.
+        </td>
+      </tr>
+      {% end %}
+      {% for entry in job.log_entries %}
+      <tr class="job_{{entry.status}}">
+        <td>{{ entry.timestamp }}</td>
+        <td>{{ entry.status }}</td>
+        <td><a href="{{ url_escape(entry.timestamp.isoformat()) }}">log</a></td>
+      </tr>
+      {% end %}
+    </table>
+
+    <table class="config">
+      <tr>
+        <th>New logs expected every:</th>
+        <td>{{ job.rules.due_every }}</td>
+      </tr>
+      <tr>
+        <th>Logs deleted after:</th>
+        <td>{{ job.rules.keep }}</td>
+      </tr>
+    </table>
+  </body>
+</html>

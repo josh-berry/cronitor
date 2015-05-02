@@ -1,0 +1,13 @@
+# Drop this file in /etc/systemd/system, and symlink it into an appropriate
+# *.target directory.  Make sure you have setup a "cronitor" user, and that it
+# can write to your logs directory (as specified in server.yaml).
+
+[Unit]
+Description=Cronitor Cron-Job Monitor
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/srv/cronitor/cronitor-server -c /srv/cronitor/server.yaml
+Restart=always
+User=cronitor

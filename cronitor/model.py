@@ -75,7 +75,7 @@ class Job(object):
 
     def record_log_entry(self, ts, logdata):
         if not os.path.isdir(self.__log_path):
-            os.mkdir(self.__log_path)
+            os.makedirs(self.__log_path)
 
         log_path = os.path.join(self.__log_path, ts.strftime(TS_FORMAT))
         with open(log_path, 'w') as f:
@@ -90,7 +90,12 @@ class Job(object):
 
         entries = os.listdir(self.__log_path)
         for e in entries:
-            ts = datetime.strptime(e, TS_FORMAT)
+            try:
+                ts = datetime.strptime(e, TS_FORMAT)
+            except ValueError:
+                # Ignore things we don't recognize.
+                continue
+
             if ts < oldest_age:
                 os.unlink(os.path.join(self.__log_path, e))
 
@@ -109,7 +114,11 @@ class Job(object):
         entries.sort()
         entries.reverse()
         for e in entries:
-            yield LogEntry(self, e)
+            try:
+                yield LogEntry(self, e)
+            except ValueError:
+                # Skip things we don't recognize.
+                pass
 
     @property
     def latest_entry(self):
@@ -152,7 +161,15 @@ class LogEntry(object):
             line = f.readline().strip()
             while line:
                 m = re.match('([a-zA-Z0-9_.-]*):\s*(.*)', line)
-                assert m
+                if not m:
+                    # This shouldn't happen unless the log file is
+                    # poorly-formatted for some reason.  If this happens, just
+                    # assume the rest of the file is the log itself -- this is
+                    # probably the least-bad failure case since it gives the
+                    # user the contents of the file and lets them see what might
+                    # have happened.
+                    break
+
                 header[m.group(1)] = m.group(2)
                 line = f.readline().strip()
 
@@ -182,23 +199,17 @@ class LogEntry(object):
     @property
     def command(self):
         self._read()
-        try:
-            return self.__header['Command']
-        except KeyError: return ''
+        return self.__header.get('Command', '')
 
     @property
     def rc(self):
         self._read()
-        try:
-            return int(self.__header['Return-Code'])
-        except KeyError: return -1
+        return self.__header.get('Return-Code', -1)
 
     @property
     def pwd(self):
         self._read()
-        try:
-            return self.__header['Directory']
-        except KeyError: return ''
+        return self.__header.get('Directory', '')
 
     @property
     def env(self):
@@ -220,5 +231,3 @@ class LogEntry(object):
         for line in self.__lines:
             is_err = rules.is_error_line(line)
             yield line, is_err
-
-

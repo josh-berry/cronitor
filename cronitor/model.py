@@ -212,7 +212,7 @@ class LogEntry(object):
     @property
     def rc(self):
         self._read()
-        return self.__header.get('Return-Code', -1)
+        return int(self.__header.get('Return-Code', -1))
 
     @property
     def pwd(self):

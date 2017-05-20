@@ -39,7 +39,7 @@ class JobSet(object):
 
     @property
     def jobs(self):
-        names = os.listdir(self.__config.job_dir)
+        names = safe_listdir(self.__config.job_dir)
         names.sort()
         for name in names:
             if os.path.isdir(self._job_dir(name)):
@@ -88,7 +88,7 @@ class Job(object):
     def rotate(self):
         oldest_age = datetime.now() - self.__rules.keep
 
-        entries = os.listdir(self.__log_path)
+        entries = safe_listdir(self.__log_path)
         for e in entries:
             try:
                 ts = datetime.strptime(e, TS_FORMAT)
@@ -110,7 +110,7 @@ class Job(object):
 
     @property
     def log_entries(self):
-        entries = os.listdir(self.__log_path)
+        entries = safe_listdir(self.__log_path)
         entries.sort()
         entries.reverse()
         for e in entries:
@@ -120,9 +120,17 @@ class Job(object):
                 # Skip things we don't recognize.
                 pass
 
+    def has_entries(self):
+        ents = self.log_entries
+        try:
+            ents.next()
+            return True
+        except StopIteration:
+            return False
+
     @property
     def latest_entry(self):
-        entries = os.listdir(self.__log_path)
+        entries = safe_listdir(self.__log_path)
         entries.sort()
         return LogEntry(self, entries[-1])
 
@@ -231,3 +239,11 @@ class LogEntry(object):
         for line in self.__lines:
             is_err = rules.is_error_line(line)
             yield line, is_err
+
+
+
+def safe_listdir(path):
+    if os.path.isdir(path):
+        return os.listdir(path)
+    else:
+        return []

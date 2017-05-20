@@ -89,14 +89,20 @@ def LogListHandler(jobset):
         @tornado.web.addslash
         def get(self, job_name):
             job = jobset[job_name]
+            if not job.has_entries():
+                raise tornado.web.HTTPError(404)
+
             self.render("log-list.html", job=job)
     return h
 
 def LogRetrieveHandler(jobset):
     class h(tornado.web.RequestHandler):
         def get(self, job_name, ts):
-            job = jobset[job_name]
-            entry = job[ts]
+            try:
+                job = jobset[job_name]
+                entry = job[ts]
+            except KeyError:
+                raise tornado.web.HTTPError(404)
 
             self.render("log.html", entry=entry)
     return h

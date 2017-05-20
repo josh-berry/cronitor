@@ -107,8 +107,19 @@ if not submit_url.endswith("/"): submit_url += "/"
 submit_url += "submit/" + opts.job
 
 r = urllib2.Request(submit_url, data=data)
-res = urllib2.urlopen(r)
-if res.getcode() != 200:
-    raise res.getcode()
+
+try:
+    res = urllib2.urlopen(r)
+    if res.getcode() != 200:
+        raise res.getcode()
+
+except urllib2.HTTPError, e:
+    rc = -1
+    sys.stderr.write('\ncronitor-run: Failed to submit job log to server\n')
+    sys.stderr.write('%s: HTTP %d: %s\n' % (submit_url, e.code, e.reason))
+except urllib2.URLError, e:
+    rc = -1
+    sys.stderr.write('\ncronitor-run: Failed to submit job log to server\n')
+    sys.stderr.write('%s: %s\n' % (submit_url, e.reason))
 
 sys.exit(rc)

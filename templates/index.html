@@ -1,7 +1,7 @@
 <html>
   <head>
     <title>Cronitor</title>
-    <link rel="stylesheet" type="text/css" href="/static/style.css" />
+    <link rel="stylesheet" type="text/css" href="static/style.css" />
   </head>
   <body>
     <h1>Cronitor Job Dashboard</h1>
@@ -19,8 +19,8 @@
         <td>{{ ent.timestamp }}</td>
         <td>{{ job.status }}</td>
         <td>
-          <a href="/log/{{ url_escape(job.name) }}/{{ url_escape(ent.timestamp.isoformat()) }}">newest</a>
-          <a href="/log/{{ url_escape(job.name) }}">all...</a>
+          <a href="log/{{ url_escape(job.name) }}/{{ url_escape(ent.timestamp.isoformat()) }}">newest</a>
+          <a href="log/{{ url_escape(job.name) }}/">all...</a>
         </td>
       {% end %}
     </table>

@@ -26,7 +26,8 @@ for errors and provides a dashboard showing all jobs that were reported.
 
 The client is a simple Python script that runs a job, captures its output and
 sends it to the server.  The client script is standalone, requiring only
-standard Python 2 libraries to run.  Installing it is as simple as ``scp``.
+standard Python 2 or Python 3 libraries to run.  Installing it is as simple as
+``scp``.
 
 Dependencies
 ============
@@ -127,23 +128,52 @@ Then setup your crontab to look like this::
 
 See ``cronitor-run --help`` for more details about how to invoke it.
 
-A Note About Security
+Cronitor and Security
 =====================
 
 Since Cronitor uses the lightweight Tornado web server, there is no support for
 SSL or authentication of any kind.  You may wish to run your Cronitor server
 behind a more full-featured proxy server such as Apache or nginx.
 
-However, ``cronitor-run`` has no support for such mechanisms (yet).  Patches --
-especially for ``cronitor-run`` -- are (very) welcome.
+Here is an example Apache configuration snippet which exposes the local
+cronitor-server under the /cronitor/ path, and enables HTTP Basic Authentication
+(you must have the *auth_basic*, *authn_file*, *authz_user*, *proxy*, and
+*proxy_http* modules loaded):
 
-For the time being, we suggest you run Cronitor inside a VPN only.
+::
+        <Location /cronitor>
+                AuthType Basic
+                AuthName "Cronitor"
+                AuthUserFile /home/www-data/passwd
+                Require valid-user
+        </Location>
+        ProxyPass "/cronitor/" "http://127.0.0.1:8434/"
+        ProxyPassReverse "/cronitor/" "http://127.0.0.1:8434/"
+
+If you run Cronitor behind a proxy server to provide encryption and/or
+authentication, ``cronitor-run`` will check the server's SSL certificate (if
+using HTTPS) against the certificate authorities recognized by the local system.
+It can also perform HTTP Basic authentication to provide a username/password to
+the proxy server (pass the ``-U`` and ``-P`` options, or set the
+``CRONITOR_USER`` and ``CRONITOR_PASSWORD`` environment variables), so the
+server can authenticate the client.
+
+This is sufficient to cover most common security needs.  However, note that
+``cronitor-run`` does not presently support HSTS, certificate pinning, or
+self-signed certificates.  You should use Let's Encrypt or a similar signing
+service to get a properly-signed SSL certificate.
+
+Additionally, since ``cronitor-run`` operates in a non-interactive context, you
+will likely need to store any username/password combination in plain text.  Do
+not reuse the username/password for anything other than Cronitor, and consider
+giving each client system/application its own credentials, to limit your
+exposure should one of your systems/applications become compromised.
 
 Legalese
 ========
 
 Cronitor: Simple Cron-Job Monitoring
-Copyright 2013 Joshua J. Berry, and others listed in the AUTHORS file
+Copyright 2013-2019 Joshua J. Berry, and others listed in the AUTHORS file
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software

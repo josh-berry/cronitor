@@ -58,7 +58,7 @@ specific platform.
 
    1. Install dependencies:
       ::
-         $ pip install PyYAML tornado      # or apt-get, or yum, or ...
+         $ pip install -r requirements.txt
 
    2. Grab the Cronitor repository, and put it somewhere useful:
       ::

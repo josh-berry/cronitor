@@ -1,12 +1,14 @@
 # Controls the Cronitor server process.  It's read once on startup, so if you
-# want to change anything here, you have to restart the server.
+# want to change anything here, you have to restart the server.  The defaults
+# are designed for Docker deployments, assuming you have Docker volumes
+# mounted in the container at /cfg and /log.
 #
 # Any relative path will be interpreted relative to this config file.
 
 
 # The directory used to hold log files from jobs.  Must be writable by the
 # server.
-job_dir: logs
+job_dir: /log
 
 # The directory where templates are stored.  Must ONLY be readable by the
 # server.  The templates contain executable code.
@@ -18,10 +20,10 @@ asset_dir: assets
 # Rules file that describes the jobs we expect and their policies.  This is
 # re-read by the server as needed, so there's no need to restart it if you
 # change something here.
-rules_file: rules.yaml
+rules_file: /cfg/rules.yaml
 
 # If you want to change the interfaces/ports that cronitor-server listens on,
-# uncomment this:
+# uncomment this; the default is port 8434 on all interfaces:
 #listen_on:
 #  - "*:8434"
 #  - "localhost:8434"

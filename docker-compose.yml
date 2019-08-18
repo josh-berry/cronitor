@@ -1,0 +1,30 @@
+# This is an example docker-compose file for exposing Cronitor on localhost port
+# 4217 (= 8434 / 2, where 8434 is the default Cronitor port).  You should
+# copy/write your own docker-compose file which suits your needs.
+#
+# You can use it for development/testing like this:
+#
+#    $ docker-compose build
+#    $ docker stack deploy -c docker-compose.yml teststack
+
+version: "3"
+
+services:
+  cronitor:
+    build: .
+    image: cronitor:latest
+    volumes:
+      - ./cfg:/cfg
+      - ./log:/log
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          # Reasonable for a small-to-medium Cronitor deployment.  Note that
+          # Cronitor is single-threaded so bumping up the cpus won't help.
+          cpus: "1"
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+    ports:
+      - 4217:8434

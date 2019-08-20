@@ -8,6 +8,8 @@
 FROM python:2-alpine
 # Consider python:2-slim if there are libc problems
 
+RUN apk add --no-cache tzdata
+
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 

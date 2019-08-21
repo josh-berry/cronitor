@@ -14,7 +14,7 @@ services:
     build: .
     image: cronitor:latest
     volumes:
-      - ./cfg:/cfg
+      - ./cfg:/cfg:ro
       - ./log:/log
     deploy:
       replicas: 1

@@ -13,9 +13,19 @@ services:
   cronitor:
     build: .
     image: cronitor:latest
+
+    # In production, we recommend something like the following:
+    #
+    #environment:
+    #  - TZ=$(cat /etc/timezone)
+
     volumes:
       - ./cfg:/cfg:ro
       - ./log:/log
+
+    ports:
+      - 4217:8434
+
     deploy:
       replicas: 1
       resources:
@@ -26,5 +36,3 @@ services:
           memory: 256M
       restart_policy:
         condition: on-failure
-    ports:
-      - 4217:8434

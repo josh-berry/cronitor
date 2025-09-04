@@ -26,5 +26,5 @@ VOLUME /log
 
 EXPOSE 8434
 
-ENV PYTHONPATH /app
+ENV PYTHONPATH=/app
 CMD [ "python", "/app/cronitor-server", "-c", "/app/server.yaml" ]

@@ -5,7 +5,7 @@
 # - /cfg - directory containing rules.yaml file
 # - /log - log files collected from jobs
 
-FROM python:2-alpine
+FROM python:3-alpine
 # Consider python:2-slim if there are libc problems
 
 RUN apk add --no-cache tzdata

@@ -18,73 +18,88 @@
 
 from datetime import timedelta
 import fnmatch
+from typing import Generator, Optional, TypedDict, cast
 import yaml
 import os
 import re
 
 __all__ = ['CronitorConfig']
 
+ServerYAML = TypedDict('ServerYAML', {
+    'job_dir': str,
+    'template_dir': str,
+    'asset_dir': str,
+    'rules_file': str,
+    'listen_on': list[str],
+})
 
-SERVER_DEFAULTS = {
+RuleYAML = TypedDict('RuleYAML', {
+    'match': str,
+    'keep': Optional[str],
+    'due_every': Optional[str],
+    'ignores': Optional[list[str]],
+    'errors': Optional[list[str]],
+})
+
+SERVER_DEFAULTS = cast(ServerYAML, {
     # These must be specified:
     #"job_dir": None,
     #"template_dir": None,
     #"rules_file": None,
     "listen_on": ['*:8434'], # 8 for port 80, 434 == sum(bytes of "cron") :)
-    }
+})
 
-RULE_DEFAULTS = {
+RULE_DEFAULTS = cast(RuleYAML, {
     #"matches": glob,
     "keep": "30d",
     "due_every": "1000y",
     # "errors": [regexp, regexp, ...]
     # "ignores": [regexp, regexp, ...]
-    }
-
+})
 
 
 
 class CronitorConfig(object):
-    def __init__(self, server_file):
+    def __init__(self, server_file: str) -> None:
         self.__server_path = server_file
 
         with open(server_file, 'r') as f:
-            self.__server = yaml.safe_load(f)
+            self.__server = cast(ServerYAML, yaml.safe_load(f))
 
-    def _server_get(self, key):
+    def _server_get(self, key: str) -> str | list[str]:
         try:
-            return self.__server[key]
+            return self.__server[key] # type: ignore
         except KeyError:
-            return SERVER_DEFAULTS[key]
+            return SERVER_DEFAULTS[key] # type: ignore
 
-    def _path(self, key):
+    def _path(self, key: str) -> str:
         # This path is relative to the configuration file
-        path = self._server_get(key)
+        path = cast(str, self._server_get(key))
         return os.path.abspath(os.path.join(os.path.dirname(self.__server_path),
                                             path))
 
-    def rules_for(self, job_name):
+    def rules_for(self, job_name: str) -> 'RuleSet':
         with open(self._path('rules_file'), 'r') as f:
             return RuleSet(yaml.safe_load(f), job_name)
 
     @property
-    def rules_file(self):
+    def rules_file(self) -> str:
         return self._path('rules_file')
 
     @property
-    def job_dir(self):
+    def job_dir(self) -> str:
         return self._path('job_dir')
 
     @property
-    def template_dir(self):
+    def template_dir(self) -> str:
         return self._path('template_dir')
 
     @property
-    def asset_dir(self):
+    def asset_dir(self) -> str:
         return self._path('asset_dir')
 
     @property
-    def listen_on(self):
+    def listen_on(self) -> Generator[tuple[str, int], None, None]:
         vals = self._server_get('listen_on')
         for v in vals:
             addr, port = v.split(":")
@@ -95,25 +110,25 @@ class CronitorConfig(object):
 
 
 class RuleSet(object):
-    def __init__(self, rules_data, job_name):
+    def __init__(self, rules_data: list[RuleYAML], job_name: str) -> None:
         rules = [Rule(**r) for r in rules_data]
         self.__rules = [r for r in rules if r.matches(job_name)]
 
     @property
-    def keep(self):
+    def keep(self) -> timedelta:
         for r in self.__rules:
             if r.keep is not None:
                 return r.keep
-        return parse_duration(RULE_DEFAULTS['keep'])
+        return parse_duration(cast(str, RULE_DEFAULTS['keep']))
 
     @property
-    def due_every(self):
+    def due_every(self) -> timedelta:
         for r in self.__rules:
             if r.due_every is not None:
                 return r.due_every
-        return parse_duration(RULE_DEFAULTS['due_every'])
+        return parse_duration(cast(str, RULE_DEFAULTS['due_every']))
 
-    def is_error_line(self, line):
+    def is_error_line(self, line: str) -> bool:
         # To get rid of newlines and trailing whitepsace that will confound
         # regexes using '$'
         line = line.rstrip()
@@ -132,23 +147,27 @@ class RuleSet(object):
 
 
 class Rule(object):
-    def __init__(self, match, keep=None, due_every=None,
-                 ignores=None, errors=None, ignores_i=None, errors_i=None):
+    def __init__(self, match: str,
+                 keep: Optional[str] = None, due_every: Optional[str] = None,
+                 ignores: Optional[list[str]] = None,
+                 errors: Optional[list[str]] = None,
+                 ignores_i: Optional[list[str]] = None,
+                 errors_i: Optional[list[str]] = None) -> None:
         self.pattern = match
         self.keep = parse_duration(keep) if keep else None
         self.due_every = parse_duration(due_every) if due_every else None
         self.ignores = self._to_relist(ignores, ignores_i)
         self.errors = self._to_relist(errors, errors_i)
 
-    def _to_relist(self, case, nocase):
-        l = []
+    def _to_relist(self, case: Optional[list[str]], nocase: Optional[list[str]]) -> list[re.Pattern[str]]:
+        l: list[re.Pattern[str]] = []
         if case:
             l += [re.compile(r) for r in case]
         if nocase:
             l += [re.compile(r, re.IGNORECASE) for r in nocase]
         return l
 
-    def matches(self, job_name):
+    def matches(self, job_name: str) -> bool:
         return fnmatch.fnmatch(job_name, self.pattern)
 
 
@@ -172,7 +191,7 @@ DURATIONS = {
     'y': YEARS, 'yr': YEARS, 'yrs': YEARS
     }
 
-def parse_duration(dur):
+def parse_duration(dur: str) -> timedelta:
     secs = 0
 
     for e in re.split(' +', dur):

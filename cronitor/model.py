@@ -19,26 +19,29 @@
 from datetime import datetime, timedelta
 import os
 import re
+from typing import Generator, Optional, cast
+
+import cronitor.config as config
 
 TS_FORMAT = '%Y-%m-%dT%H:%M:%S.%f'
 
 
 
 class JobSet(object):
-    def __init__(self, config):
+    def __init__(self, config: config.CronitorConfig) -> None:
         self.__config = config
 
-    def _config(self):
+    def _config(self) -> config.CronitorConfig:
         return self.__config
 
-    def _job_dir(self, name):
+    def _job_dir(self, name: str) -> str:
         return os.path.join(self.__config.job_dir, name)
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str) -> 'Job':
         return Job(self, name)
 
     @property
-    def jobs(self):
+    def jobs(self) -> Generator['Job', None, None]:
         names = safe_listdir(self.__config.job_dir)
         names.sort()
         for name in names:
@@ -53,7 +56,7 @@ class JobSet(object):
 
 
 class Job(object):
-    def __init__(self, jobset, name):
+    def __init__(self, jobset: JobSet, name: str) -> None:
         # because files with extensions (including ".") are private
         assert re.match('[0-9A-Za-z_-]*', name)
 
@@ -62,18 +65,18 @@ class Job(object):
         self.__rules = jobset._config().rules_for(name)
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.__name
 
     @property
-    def path(self):
+    def path(self) -> str:
         return self.__log_path
 
     @property
-    def rules(self):
+    def rules(self) -> config.RuleSet:
         return self.__rules
 
-    def record_log_entry(self, ts, logdata):
+    def record_log_entry(self, ts: datetime, logdata: str) -> 'LogEntry':
         if not os.path.isdir(self.__log_path):
             os.makedirs(self.__log_path)
 
@@ -85,7 +88,7 @@ class Job(object):
 
         return LogEntry(self, ts.strftime(TS_FORMAT))
 
-    def rotate(self):
+    def rotate(self) -> None:
         oldest_age = datetime.now() - self.__rules.keep
 
         entries = safe_listdir(self.__log_path)
@@ -99,7 +102,7 @@ class Job(object):
             if ts < oldest_age:
                 os.unlink(os.path.join(self.__log_path, e))
 
-    def __getitem__(self, entry):
+    def __getitem__(self, entry: datetime | str) -> 'LogEntry':
         if isinstance(entry, datetime):
             entry = datetime.strftime(entry, TS_FORMAT)
 
@@ -120,10 +123,10 @@ class Job(object):
                 # Skip things we don't recognize.
                 pass
 
-    def has_entries(self):
+    def has_entries(self) -> bool:
         ents = self.log_entries
         try:
-            ents.next()
+            next(ents)
             return True
         except StopIteration:
             return False
@@ -152,23 +155,23 @@ class Job(object):
 
 
 class LogEntry(object):
-    def __init__(self, job, timestamp):
+    def __init__(self, job: Job, timestamp: str) -> None:
         self.job = job
         self.path = os.path.join(self.job.path, timestamp)
         self.timestamp = datetime.strptime(timestamp, TS_FORMAT)
 
-        self.__header = None
-        self.__lines = None
+        self.__header: Optional[dict[str, str]] = None
+        self.__lines: Optional[list[str]] = None
 
-    def _read(self):
+    def _read(self) -> None:
         if self.__header: return
 
-        header = {}
+        header: dict[str, str] = {}
         with open(self.path, 'r') as f:
             # Read the header, up to the first blank line
             line = f.readline().strip()
             while line:
-                m = re.match('([a-zA-Z0-9_.-]*):\s*(.*)', line)
+                m = re.match('([a-zA-Z0-9_.-]*):\\s*(.*)', line)
                 if not m:
                     # This shouldn't happen unless the log file is
                     # poorly-formatted for some reason.  If this happens, just
@@ -188,61 +191,57 @@ class LogEntry(object):
             self.__lines = lines
 
     @property
-    def status(self):
+    def status(self) -> str:
         if self.rc != 0:
             return 'failed'
 
         # Make sure nothing weird or nasty appears in the log
-        for line, is_err in self.scan_text():
+        for _line, is_err in self.scan_text():
             if is_err:
                 return 'error'
 
         return 'ok'
 
     @property
-    def metadata(self):
+    def metadata(self) -> dict[str, str]:
         self._read()
-        return self.__header
+        return cast(dict[str, str], self.__header)
 
     @property
-    def command(self):
-        self._read()
-        return self.__header.get('Command', '')
+    def command(self) -> str:
+        return self.metadata.get('Command', '')
 
     @property
-    def rc(self):
-        self._read()
-        return int(self.__header.get('Return-Code', -1))
+    def rc(self) -> int:
+        return int(self.metadata.get('Return-Code', -1))
 
     @property
-    def pwd(self):
-        self._read()
-        return self.__header.get('Directory', '')
+    def pwd(self) -> str:
+        return self.metadata.get('Directory', '')
 
     @property
-    def env(self):
-        self._read()
-        env = {}
-        for k, v in self.__header.iteritems():
+    def env(self) -> dict[str, str]:
+        env: dict[str, str] = {}
+        for k, v in self.metadata.items():
             if k.startswith("ENV."):
                 env[k[4:]] = v
         return env
 
     @property
-    def text(self):
+    def text(self) -> str:
         self._read()
-        return ''.join(self.__lines)
+        return ''.join(cast(list[str], self.__lines))
 
-    def scan_text(self):
+    def scan_text(self) -> Generator[tuple[str, bool], None, None]:
         self._read()
         rules = self.job.rules
-        for line in self.__lines:
+        for line in cast(list[str], self.__lines):
             is_err = rules.is_error_line(line)
             yield line, is_err
 
 
 
-def safe_listdir(path):
+def safe_listdir(path: str) -> list[str]:
     if os.path.isdir(path):
         return os.listdir(path)
     else:

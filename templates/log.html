@@ -21,7 +21,7 @@
     </table>
 
     <table class="log_metadata">
-      {% set sorted_env = entry.env.items() %}
+      {% set sorted_env = list(entry.env.items()) %}
       <!-- {{ sorted_env.sort() }} -->
       {% for k, v in sorted_env %}
       <tr>

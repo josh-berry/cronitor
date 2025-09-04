@@ -7,8 +7,6 @@
 #    $ docker-compose build
 #    $ docker stack deploy -c docker-compose.yml teststack
 
-version: "3"
-
 services:
   cronitor:
     build: .

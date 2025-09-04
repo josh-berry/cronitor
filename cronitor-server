@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Author:: Joshua J. Berry <des@condordes.net>
 # Copyright:: Copyright (c) 2013, Joshua J. Berry
@@ -17,12 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
-import os
-import re
-import json
-import fnmatch
 import optparse
 
 import tornado.ioloop
@@ -55,8 +51,7 @@ def main():
 
 
 
-def make_app(template_dir, asset_dir, jobset):
-    loader = tornado.template.Loader(template_dir)
+def make_app(template_dir: str, asset_dir: str, jobset: JobSet) -> tornado.web.Application:
     return tornado.web.Application(
         handlers=[
             (r"/", MainHandler(jobset)),
@@ -69,7 +64,7 @@ def make_app(template_dir, asset_dir, jobset):
 
 
 
-def MainHandler(jobset):
+def MainHandler(jobset: JobSet) -> tornado.web.RequestHandler:
     class h(tornado.web.RequestHandler):
         def get(self):
             for job in jobset.jobs:
@@ -77,17 +72,17 @@ def MainHandler(jobset):
             self.render("index.html", jobs=jobset)
     return h
 
-def LogSubmitHandler(jobset):
+def LogSubmitHandler(jobset: JobSet) -> tornado.web.RequestHandler:
     class h(tornado.web.RequestHandler):
-        def post(self, job_name):
+        def post(self, job_name: str):
             job = jobset[job_name]
-            job.record_log_entry(datetime.now(), self.request.body)
+            job.record_log_entry(datetime.now(), self.request.body.decode('utf-8'))
     return h
 
-def LogListHandler(jobset):
+def LogListHandler(jobset: JobSet) -> tornado.web.RequestHandler:
     class h(tornado.web.RequestHandler):
         @tornado.web.addslash
-        def get(self, job_name):
+        def get(self, job_name: str):
             job = jobset[job_name]
             if not job.has_entries():
                 raise tornado.web.HTTPError(404)
@@ -95,9 +90,9 @@ def LogListHandler(jobset):
             self.render("log-list.html", job=job)
     return h
 
-def LogRetrieveHandler(jobset):
+def LogRetrieveHandler(jobset: JobSet) -> tornado.web.RequestHandler:
     class h(tornado.web.RequestHandler):
-        def get(self, job_name, ts):
+        def get(self, job_name: str, ts: str):
             try:
                 job = jobset[job_name]
                 entry = job[ts]

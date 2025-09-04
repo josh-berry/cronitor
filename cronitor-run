@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Author:: Joshua J. Berry <des@condordes.net>
 # Copyright:: Copyright 2013-2019, Joshua J. Berry
@@ -27,23 +27,11 @@ import sys
 import socket
 import traceback
 
-# Python 2/3 shims.
-if sys.version_info >= (3,):
-    from urllib.request import Request, HTTPSHandler, \
-        HTTPBasicAuthHandler, HTTPPasswordMgrWithDefaultRealm, \
-        build_opener, install_opener
-    from urllib.error import HTTPError, URLError
-    import ssl
-    pairs = lambda d: d.items()
-    encode = lambda s: bytes(s, 'utf-8')
-else:
-    from urllib2 import Request, HTTPError, URLError, HTTPSHandler, \
-        HTTPBasicAuthHandler, HTTPPasswordMgrWithDefaultRealm, \
-        build_opener, install_opener
-    from urllib2 import ssl
-    pairs = lambda d: d.iteritems()
-    encode = lambda s: s
-
+from urllib.request import Request, HTTPSHandler, \
+    HTTPBasicAuthHandler, HTTPPasswordMgrWithDefaultRealm, \
+    build_opener
+from urllib.error import HTTPError, URLError
+import ssl
 
 usage = "Usage: cronitor-run [options] -j job-name -- command ..."
 descr = """Runs a command, capturing its output, environment and return code,
@@ -91,10 +79,10 @@ meta = {
     'Command': " ".join(args),
     'Host': socket.gethostname(),
 }
-for k, v in pairs(os.environ):
-    meta['ENV.%s' % k] = v
+for k, v in os.environ.items():
+    meta['ENV.%s' % k] = v.replace('\n', ' ').replace('\r', ' ')
 
-lines = []
+lines: list[str] = []
 try:
     # Control the child process with a TTY so the child process will use line
     # buffering for its output (and stdout/stderr won't get interleaved in weird
@@ -129,11 +117,11 @@ except:
 
 meta['Return-Code'] = str(rc)
 
-data = "\n".join(["%s: %s" % (k, v) for k, v in pairs(meta)])
+data = "\n".join(["%s: %s" % (k, v) for k, v in meta.items()])
 data += "\n\n"
 data += ''.join(lines)
 
-def oops(err):
+def oops(err: str):
     sys.stderr.write('\ncronitor-run: Failed to submit job log to server\n')
     sys.stderr.write(err)
     sys.stderr.write('\n')
@@ -143,7 +131,7 @@ def oops(err):
         sys.stderr.write('\n')
 
 try:
-    res = opener.open(Request(submit_url, data=encode(data)))
+    res = opener.open(Request(submit_url, data=data.encode('utf-8')))
     if res.getcode() != 200:
         raise res.getcode()
 
